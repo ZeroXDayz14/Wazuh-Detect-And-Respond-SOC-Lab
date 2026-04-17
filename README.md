@@ -153,7 +153,7 @@ The lab focuses on:
 ## ⚠️ Disclaimer
 
 This project was conducted in a controlled lab environment.  
-All attacks were simulated on owned systems.
+All attacks were simulated on owned systems within an internal isolated network of static IP's.
 
 ---
 
