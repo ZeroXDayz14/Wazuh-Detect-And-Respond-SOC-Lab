@@ -1,17 +1,15 @@
-# 🛡️ Wazuh SIEM Lab (Ubuntu): Detect & Respond to SSH Brute Force Attacks
+# 🛡️ Wazuh SOC Detection Lab – Multi Use Cases
 
----
+## 📌 Project Overview
 
-## 📌 Overview
+This project is a multi-use case Security Operations Center (SOC) home lab built using **Wazuh SIEM**. It demonstrates detection, analysis, and response across multiple attack scenarios, simulating real-world SOC workflows.
 
-This project demonstrates a complete **Security Operations Center (SOC) workflow on Ubuntu** using Wazuh SIEM.
-
-The lab simulates a real-world **SSH brute-force attack** and shows how to:
-
-* Collect Linux authentication logs
-* Detect suspicious login behavior
-* Generate alerts in Wazuh
-* Automatically respond by blocking attacker IPs
+The lab focuses on:
+- Log collection and analysis  
+- Detection engineering using Wazuh rules  
+- Attack simulation and validation  
+- Automated and manual response actions  
+- Analyst-style triage and investigation  
 
 ---
 
@@ -19,294 +17,256 @@ The lab simulates a real-world **SSH brute-force attack** and shows how to:
 
 ![Architecture](screenshots/architecture.png)
 
-### 🔹 Systems
-
-* **Wazuh Manager (Ubuntu)** → `192.168.56.10`
-* **Kali Linux (Attacker Machine)** → `192.168.56.40`
-* **Wazuh Agent-Windows 10 (Target Machine)** → `192.168.56.20`
----
-
-## 🔄 Data Flow
-
-```text
-Kali Attack (Hydra)
-   ↓
-Ubuntu SSH Server
-   ↓
-Wazuh Log Collector
-   ↓
-Wazuh Manager (analysisd)
-   ↓
-Wazuh Dashboard
-   ↓
-Active Response (firewall-drop)
-```
+### Environment Components:
+- **Ubuntu Server** – Wazuh Manager, Indexer, Dashboard  
+- **Windows 10 Endpoint** – Sysmon + Wazuh Agent  
+- **Kali Linux** – Attacker machine  
 
 ---
 
-## ⚙️ Technologies Used
+## 🔎 Agent & Log Ingestion Verification
 
-* Wazuh SIEM (4.x)
-* Ubuntu Server
-* Kali Linux
-* Hydra (Brute-force tool)
-* SSH (OpenSSH)
-* nftables / iptables
-* VirtualBox
-* sysmon swiftonsecurity
+### Agent Connected
+![Agent Active](screenshots/agent-active.png)
+
+### Sysmon Logs Being Ingested
+![Sysmon Logs](screenshots/agent-reading-sysmon.png)
 
 ---
 
-# 🔐 Use Case: SSH Brute Force Detection & Response
+## 🎯 Use Cases
+
+| Use Case | Technique | Detection | Response |
+|----------|----------|----------|----------|
+| SSH Brute Force | Credential Access | Rule 5551 | IP Block |
+| PowerShell Execution | Execution | Rule 100500 | Alert |
+| PowerShell Download | Command & Control | Rule 100501 | Alert |
+| Encoded PowerShell | Defense Evasion | Rule 100502 | Alert |
+| Nmap Recon | Discovery | Detection Gap | None |
 
 ---
 
-## 🎯 Scenario
+# 🔐 Use Case 1: SSH Brute Force Detection & Response
 
-Simulate a brute-force attack using Hydra and automatically block the attacker IP using Wazuh Active Response.
+## Service Verification
 
----
-
-## 💥 Attack Simulation (Kali)
-
-```bash
-hydra -l root -P ~/test.txt -t 4 ssh://192.168.56.10
-```
+![SSH Running](screenshots/ssh-service-running.png)
 
 ---
 
-## ⚙️ Log Collection (Ubuntu)
+## Attack Simulation (Kali)
 
-Wazuh monitors SSH authentication logs from:
-
-```text
-/var/log/auth.log
-```
+![Kali SSH Attempt](screenshots/kali-attack-source.png)
 
 ---
 
-## 🚨 Detection
+## Log Evidence (auth.log)
 
-Wazuh detects repeated failed login attempts using built-in correlation rules.
+![Auth Log Evidence](screenshots/ssh-auth-log-evidence.png)
 
-### Triggered Rule
-
-* **Rule ID:** 5551
-* **Description:** PAM: Multiple failed logins in a small period of time
-* **MITRE ATT&CK:** T1110 (Brute Force)
+- Multiple failed login attempts observed  
+- Source IP: **192.168.56.40**
 
 ---
 
-## 📌  Custom Detection Rule
+## Initial Detection
 
-```xml
-<rule id="100600" level="10" frequency="5" timeframe="60">
-  <if_matched_sid>5716</if_matched_sid>
-  <description>Multiple SSH authentication failures detected (possible brute force)</description>
-  <group>authentication_failed,sshd,bruteforce</group>
-</rule>
-```
+![SSH Detection](screenshots/ssh-detection-details.png)
+
+- **Rule ID:** 5760  
+- Authentication failure events detected  
 
 ---
 
-## ⚡ Active Response Configuration
+## Brute Force Detection
 
-Configured in `/var/ossec/etc/ossec.conf`:
+![Brute Force Alert](screenshots/ssh-bruteforce-alert.png)
 
-```xml
-<command>
-  <name>firewall-drop</name>
-  <executable>firewall-drop</executable>
-  <expect>srcip</expect>
-  <timeout_allowed>yes</timeout_allowed>
-</command>
-
-<active-response>
-  <disabled>no</disabled>
-  <command>firewall-drop</command>
-  <location>server</location>
-  <rules_id>5551</rules_id>
-  <timeout>600</timeout>
-</active-response>
-```
-
-## 🔄 Detection → Response Correlation
-
-This lab demonstrates a full SOC workflow:
-
-1. Attack initiated from Kali (Hydra brute force)
-2. SSH logs generated in `/var/log/auth.log`
-3. Wazuh detects repeated failures (Rule 5551)
-4. Active response triggers automatically
-5. Attacker IP is blocked at firewall level
+- **Rule ID:** 5551  
+- Multiple failed logins within short timeframe  
 
 ---
 
-## ✅ Results
+## Active Response Triggered
 
-* Attacker IP detected: `192.168.56.40`
-* Wazuh alert generated
-* Active response executed
-* Attacker IP successfully blocked
+![Active Response](screenshots/active-response-triggered.png)
 
----
-
-## 📸 Evidence
-
-### 🔐 Attack & Detection
-
-![Hydra Attack](screenshots/kali-attack-source.png)
-
-![SSH Failures](screenshots/ssh-auth-log-evidence.png)
-
-![Wazuh Alert](screenshots/ssh-bruteforce-alert.png)
+- Firewall-drop action executed  
 
 ---
 
-### ⚡ Active Response Execution
+## Firewall Evidence
 
-![Active Response Triggered](screenshots/active-response-triggered.png)
+![Firewall Rule](screenshots/firewall-blocked-ip.png)
+
+- Attacker IP successfully blocked  
+
+---
+
+## Active Response Log (JSON)
 
 ![Active Response JSON](screenshots/active-response-json.png)
 
----
-
-### 🛑 Firewall Enforcement
-
-![Firewall Block](screenshots/firewall-blocked-ip.png)
+- Command executed: `firewall-drop`  
+- Triggered by Rule 5551  
 
 ---
 
-### 📊 Dashboard Visibility
+## Analyst Triage
 
-![Dashboard Alerts](screenshots/wazuh-dashboard-alerts.png)
-
----
-
-## 🔎 Validation
-
----
-
-### 1️⃣ Detection Logs
-
-```bash
-grep 5551 /var/ossec/logs/alerts/alerts.json
-```
+- **Source IP:** 192.168.56.40  
+- **Technique:** T1110 – Brute Force  
+- **Severity:** High  
+- **Verdict:** True Positive  
+- **Action:** IP blocked automatically  
 
 ---
 
-### 2️⃣ Active Response Logs
+# 💻 Use Case 2: PowerShell Detection (Windows)
 
-```bash
-tail -f /var/ossec/logs/active-responses.log
-```
+## Sysmon Event Evidence
 
-Example:
-
-```text
-firewall-drop: add - 192.168.56.40
-```
+### Process Creation (Event ID 1)
+![Sysmon Event 1](screenshots/sysmon-local-events-ID-1.png)
 
 ---
 
-### 3️⃣ Firewall Verification
-
-```bash
-sudo nft list ruleset
-```
-
-Expected:
-
-```text
-ip saddr 192.168.56.40 drop
-```
+### Network & DNS Activity (Event ID 3 & 22)
+![Sysmon Events](screenshots/sysmon-local-events-ID-22-ID-3.png)
 
 ---
 
-## ⚡ Active Response Proof (Raw Logs)
+## Detection Query (Hunting)
 
-The system confirms execution via `wazuh-execd`:
-
-* Command executed: `firewall-drop`
-* Action: `add`
-* Source IP: `192.168.56.40`
+![PowerShell Query](screenshots/powershell-commandline-evidence.png)
 
 ---
 
-## 🧠 How Active Response Works
+## Attack Simulation
 
-1. Detection rule triggers (Rule 5551)
-2. Alert is sent to `wazuh-execd`
-3. Active response script executes
-4. Firewall rule is inserted
-5. Attacker traffic is blocked
+![PowerShell Attack](screenshots/powershell-attack-command.png)
 
----
-
-## 🎯 Project Objectives
-
-This project demonstrates real-world SOC capabilities:
-
-* Detection of brute-force attacks
-* Log correlation and alerting
-* Automated incident response
-* Endpoint protection via firewall enforcement
+- Execution
+- Web request
+- Encoded command
 
 ---
 
-## 📁 Project Structure
+## Custom Detection Rules
 
-```
-wazuh-siem-lab/
-│
-├── attacks/        # Hydra commands & test files
-├── configs/        # Wazuh configuration files
-├── rules/          # Custom detection rules
-├── screenshots/    # Evidence images
-├── README.md
-└── LICENSE
-```
+![Custom Rules](screenshots/custom-rules.png)
+
+| Rule ID | Description |
+|--------|------------|
+| 100500 | PowerShell execution |
+| 100501 | PowerShell download |
+| 100502 | Encoded PowerShell |
 
 ---
 
-## 🧠 Key Learning Outcomes
+## Detection Alerts
 
-* Built a SIEM lab on Ubuntu
-* Detected SSH brute-force attacks
-* Configured Wazuh Active Response
-* Automated IP blocking
-* Validated detection-to-response pipeline
+![Custom Alerts](screenshots/custom-detection-alerts.png)
+
+- All attack variants successfully detected  
+- Alerts generated with increased severity  
+
+---
+
+## Analyst Triage
+
+- **Technique:** T1059.001 – PowerShell  
+- **Technique:** T1105 – Tool Transfer  
+- **Technique:** T1027 – Obfuscation  
+- **Verdict:** True Positive  
+- **Action:** Alert escalation  
+
+---
+
+# 🌐 Use Case 3: Nmap Reconnaissance
+
+## Attack Simulation
+
+![Nmap Scan](screenshots/reconnaissance-nmap-filtered.png)
+
+- Target scanned from Kali Linux  
+
+---
+
+## Detection Gap
+
+- No alerts generated in Wazuh  
+- Demonstrates limitation of host-based SIEM  
+
+👉 Requires:
+- Network IDS (Suricata / Zeek)
+
+---
+
+# 📊 Wazuh Dashboard Overview
+
+![Dashboard](screenshots/wazuh-dashboard-alerts.png)
+
+---
+
+## 🔍 Detection Strategy
+
+- Linux detection via **auth.log (PAM events)**  
+- Windows detection via **Sysmon telemetry**  
+- Wazuh correlates logs and triggers alerts  
+- Custom rules extend detection coverage  
+
+---
+
+## ⚡ Response Mechanisms
+
+- **Active Response**
+  - Automatic IP blocking via firewall  
+
+- **Alert-Based Detection**
+  - Requires analyst investigation  
+
+---
+
+## 🧬 MITRE ATT&CK Mapping
+
+| Use Case | Technique |
+|----------|----------|
+| SSH Brute Force | T1110 |
+| PowerShell Execution | T1059.001 |
+| PowerShell Download | T1105 |
+| Encoded PowerShell | T1027 |
+| Nmap Recon | T1046 |
+
+---
+
+## 📚 Lessons Learned
+
+- Built-in rules effectively detect brute force attacks  
+- Sysmon provides strong visibility into endpoint activity  
+- PowerShell detection requires tuning to reduce false positives  
+- Host-based monitoring lacks visibility for network scans  
+- Active response is powerful but must be controlled  
 
 ---
 
 ## 🚀 Future Improvements
 
-* Add Fail2Ban comparison
-* Integrate email alerting
-* Add GeoIP enrichment
-* Create advanced dashboards
-* Expand to web attack detection
-
----
-
-## 💼 Skills Demonstrated
-
-* SIEM Engineering
-* Linux Security Monitoring
-* Threat Detection (Brute Force)
-* Incident Response Automation
-* Log Analysis
+- Integrate Suricata for network detection  
+- Add threat intelligence enrichment  
+- Expand detection use cases  
+- Improve alert tuning  
 
 ---
 
 ## ⚠️ Disclaimer
 
-This project was conducted in a **controlled lab environment** for educational purposes only.
-All attacks were performed on owned systems and custom built internal isolated network.
+This project was conducted in a controlled lab environment.  
+All attacks were simulated on owned systems.
 
 ---
 
 ## 👤 Author
 
-**Kissinger Jayaseelan**
+SOC Lab Project by **ZeroXDayz**
 
