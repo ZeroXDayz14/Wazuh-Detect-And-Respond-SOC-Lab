@@ -42,3 +42,4 @@ secrets.txt
 
 wazuh-lab-files/
 
+configs/ossec.conf
