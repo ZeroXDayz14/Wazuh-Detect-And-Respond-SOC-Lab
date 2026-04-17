@@ -81,7 +81,7 @@ These use cases demonstrate hands-on experience with:
 
 ---
 
-## 🧠 Key Takeaways
+## 🧠 Lessons Learned
 
 - SIEM detection depends heavily on log sources  
 - Sysmon significantly improves endpoint visibility  
