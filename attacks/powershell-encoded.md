@@ -1,29 +1,58 @@
-# Encoded PowerShell Test
+# 🔐 Use Case: Encoded PowerShell Detection
 
-## Objective
+## 🎯 Objective
+Detect obfuscated PowerShell commands using base64 encoding.
 
-Detect obfuscated PowerShell execution using an encoded command.
+---
 
-## Source
+## ⚔️ Attack Simulation
 
-Windows 10 endpoint
-
-## Command
-
-```powershell id="r1k9zx"
-powershell -enc VwByAGkAdABlAC0ASABvAHMAdAAgACIAVABlAHMAdAAiAA==
+Command executed:
+```powershell
+powershell -enc <base64_string>
 ```
 
-## Expected Detection
+![Encoded](../screenshots/powershell-attack-command.png)
 
-* Rule ID: 100502
-* Description: Custom: Encoded PowerShell detected
+---
 
-## Evidence
+## 📄 Log Source
 
-![PowerShell Attack Command](screenshots/powershell-attack-command.png)
-![Detection Alerts](screenshots/custom-detection-alerts.png)
+- Sysmon Event ID 1
 
-## Result
+---
 
-Wazuh successfully detected encoded PowerShell execution using custom alert logic.
+## 🔍 Detection Logic
+
+- Base Rule: **92027**
+- Custom Rule: **100502**
+
+```xml
+<rule id="100502" level="13">
+  <if_sid>92027</if_sid>
+  <match>-enc</match>
+  <description>Custom: Encoded PowerShell detected</description>
+</rule>
+```
+
+---
+
+## 🚨 Alert Evidence
+
+![Alerts](../screenshots/custom-detection-alerts.png)
+
+---
+
+## 🧠 Analyst Triage
+
+- **Indicator:** Encoded command  
+- **Technique:** T1027 – Obfuscation  
+- **Severity:** High  
+- **Verdict:** True Positive  
+
+---
+
+## 📚 Lessons Learned
+
+- Encoded commands are a strong indicator of malicious intent  
+- High-priority alerting is appropriate for this behavior  
